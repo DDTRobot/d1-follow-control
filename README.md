@@ -1,8 +1,12 @@
 # d1-remote-control
 
-D1 机器人远程控制包
+D1 机器人远程控制包 — 基于 Intel D435i 深度相机与uwb的智能跟随功能。
 
-## 构建与安装
+---
+
+## 安装
+
+### 从源码构建
 
 ```bash
 git clone <repo-url>
@@ -10,74 +14,74 @@ cd d1-follow-control
 bash build_deb.sh
 ```
 
-## 手动安装 deb
+### 手动安装 deb 包
 
 ```bash
 sudo dpkg -i d1-follow-control_1.0_all.deb
 ```
 
-## 后续不用该功能可以卸载，会占用sdk mode
+### 卸载
 
 ```bash
 sudo apt remove d1-follow-control
 ```
 
+> 后续不需要该功能时建议卸载，此包会占用 SDK mode。
+
+---
+
 ## 使用方法
 
-安装完，打开SDK mode即可进入智能跟随模式，请在空旷测试区域测试。(由于相机视野有限，在机器狗周围仍存在大部分盲区，有一定的碰撞风险，请自行排查并承担其产生的风险)
+安装完成后，打开 **SDK mode** 即可进入智能跟随模式。
 
-请注意：勿在玻璃和高反光物体附近测试，D435i 使用主动红外结构光 + 双目立体视觉：左右红外相机捕捉 IR 投影图案，通过视差计算深度。
+> **请在空旷测试区域测试。** 由于相机视野有限，机器狗周围仍存在较大盲区，存在一定碰撞风险，请自行排查并承担相关风险。
 
-玻璃和反光物体的问题:
+---
 
-玻璃（透明材质）
-IR 光线直接穿透玻璃，相机看到的是玻璃后方的物体
-深度值要么是玻璃后方物体的距离，要么因无法匹配而返回 0（无效值）
-常见场景：玻璃门、水族箱、透明塑料容器
-强反光物体（镜面、金属抛光面）
+## 注意事项
 
-强反光物体（镜面、金属抛光面）
-IR 光被镜面反射到其他方向，双目相机接收不到有效反射
-或者接收到来自其他方向的杂散反射，导致深度值偏大或无效
-常见场景：镜子、不锈钢表面、光滑瓷砖
+**请勿在玻璃和高反光物体附近测试。**
 
-控制部分代码请参考:
-deb-package\opt\d1-follow-control\d1_follow_d435i.py
+D435i 使用主动红外结构光 + 双目立体视觉（左右红外相机捕捉 IR 投影图案，通过视差计算深度），以下场景会导致深度数据异常：
 
-参数说明
+| 场景类型 | 原因 | 典型案例 |
+|----------|------|----------|
+| **玻璃（透明材质）** | IR 光直接穿透，相机捕获的是玻璃后方物体，深度值无效或错误 | 玻璃门、水族箱、透明塑料容器 |
+| **强反光物体（镜面/金属抛光面）** | IR 光被镜面反射到其他方向，双目相机无法接收有效反射，深度值偏大或无效 | 镜子、不锈钢表面、光滑瓷砖 |
 
-目标距离，靠近多远停止
-target_distance
+---
 
-跟随更快/更慢
-kp_distance 调大/调小
+## 参数说明
 
-转向更快/更慢
-kp_angle 调大/调小
+控制代码位于：`deb-package/opt/d1-follow-control/d1_follow_d435i.py`
 
-最高速度
-max_linear_speed / max_angular_speed
+### 基础参数
 
-到位后还在轻微抖动
-适当加大 distance_deadzone
+| 参数 | 说明 |
+|------|------|
+| `target_distance` | 目标跟随距离，靠近到该距离后停止 |
+| `kp_distance` | 跟随速度比例系数，调大加快 / 调小减慢 |
+| `kp_angle` | 转向速度比例系数，调大加快 / 调小减慢 |
+| `max_linear_speed` | 最高线速度（m/s） |
+| `max_angular_speed` | 最高角速度（rad/s） |
+| `distance_deadzone` | 到位后轻微抖动时，适当加大此值 |
+| `self.safe_distance` | 避障安全距离阈值 |
+| `self.turning_forward_duration` | 跨越障碍的前行时长，理论值 = （机身长度 + 障碍垂直距离）/ 速度 |
+| `self.smooth_alpha` | 平滑系数，控制每帧速度变化比例，避免速度突变（默认 `0.6`） |
 
-避障安全距离阈值
-self.safe_distance
+### 高速跟随配置（最高 3 m/s）
 
-跨过障碍设定时长，理论上等于（机身长度+障碍垂直距离）/ 速度
-self.turning_forward_duration
+默认最高速为 1.5 m/s，如需切换至 3 m/s 高速跟随，参考以下配置：
 
-平滑系数，控制的是每帧速度变化的比例，避免速度突变
-self.smooth_alpha = 0.6
-
-
-默认最高速1.5m/s，如需修改为最高3m/s的跟随，可参考以下修改：
-
+```python
 self.target_distance = 1.8
 self.max_linear_speed = 3.0
 self.max_angular_speed = 3.0
 self.safe_distance = 1.6
-self.turning_forward_duration = 0.8 
+self.turning_forward_duration = 0.8
+```
 
-提高target_distance可避免高速下由于速度惯性，到位停止不及时而产生碰撞风险
-提高safe_distance可延长避障距离，便于高速下及时避障，注意：请在空旷位置测试，理论上路面宽度需要大于safe_distance x 2 ，才能稳定跟随，不然会判定左侧或者右侧存在障碍，频繁进入避障模式
+> - 提高 `target_distance`：避免高速下因惯性停止不及时而发生碰撞。
+> - 提高 `safe_distance`：延长避障距离，便于高速下及时避障。
+>
+> **注意：** 高速模式请在空旷区域测试，路面宽度理论上需大于 `safe_distance × 2`，否则会频繁误判两侧存在障碍并进入避障模式。
