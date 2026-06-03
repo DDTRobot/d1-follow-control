@@ -1,6 +1,6 @@
-# d1-remote-control
+# d1-follow-control
 
-D1 机器人远程控制包 — 基于 Intel D435i 深度相机与uwb的智能跟随功能。
+D1 机器人跟随控制包 — 基于 Intel D435i 深度相机与uwb的智能跟随功能。
 
 ---
 
@@ -59,12 +59,12 @@ D435i 使用主动红外结构光 + 双目立体视觉（左右红外相机捕�
 
 | 参数 | 说明 |
 |------|------|
-| `target_distance` | 目标跟随距离，靠近到该距离后停止 |
-| `kp_distance` | 跟随速度比例系数，调大加快 / 调小减慢 |
-| `kp_angle` | 转向速度比例系数，调大加快 / 调小减慢 |
-| `max_linear_speed` | 最高线速度（m/s） |
-| `max_angular_speed` | 最高角速度（rad/s） |
-| `distance_deadzone` | 到位后轻微抖动时，适当加大此值 |
+| `self.target_distance` | 目标跟随距离，靠近到该距离后停止 |
+| `self.kp_distance` | 跟随速度比例系数，调大加快 / 调小减慢 |
+| `self.kp_angle` | 转向速度比例系数，调大加快 / 调小减慢 |
+| `self.max_linear_speed` | 最高线速度（m/s） |
+| `self.max_angular_speed` | 最高角速度（rad/s） |
+| `self.distance_deadzone` | 到位后轻微抖动时，适当加大此值 |
 | `self.safe_distance` | 避障安全距离阈值 |
 | `self.turning_forward_duration` | 跨越障碍的前行时长，理论值 = （机身长度 + 障碍垂直距离）/ 速度 |
 | `self.smooth_alpha` | 平滑系数，控制每帧速度变化比例，避免速度突变（默认 `0.6`） |
