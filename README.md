@@ -6,7 +6,7 @@ D1 机器人远程控制包 — 基于 Intel D435i 深度相机与uwb的智能�
 
 ## 安装
 
-### 从源码构建
+### 第一种方式，从源码构建
 
 ```bash
 git clone <repo-url>
@@ -14,10 +14,10 @@ cd d1-follow-control
 bash build_deb.sh
 ```
 
-### 手动安装 deb 包
+### 第二种方式，直接安装 deb 包
 
 ```bash
-sudo dpkg -i d1-follow-control_1.0_all.deb
+sudo apt install ./d1-follow-control_1.0.deb
 ```
 
 ### 卸载
