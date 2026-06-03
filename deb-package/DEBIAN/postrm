@@ -1,0 +1,10 @@
+#!/bin/bash
+# postrm script for d1-follow-control
+
+set -e
+
+systemctl daemon-reload
+
+#DEBHELPER#
+
+exit 0

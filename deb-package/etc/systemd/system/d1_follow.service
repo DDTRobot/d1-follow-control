@@ -1,0 +1,18 @@
+[Unit]
+Description=D1 UWB Follow Control with D435i Obstacle Avoidance
+After=network.target d1_d435i.service
+Wants=d1_d435i.service
+
+[Service]
+Type=simple
+User=robot
+Environment="ROS_DOMAIN_ID=42"
+Environment="ROS_LOCALHOST_ONLY=1"
+WorkingDirectory=/home/robot
+ExecStartPre=/bin/sleep 10
+ExecStart=/bin/bash -c "source /opt/ros/humble/setup.bash && source /opt/d1_ros2/local_setup.bash && source /opt/d1_ros2/namespace.sh && python3 /opt/d1-follow-control/d1_follow_d435i.py"
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+#!/bin/bash
+# prerm script for d1-follow-control
+
+set -e
+
+systemctl stop d1_follow.service || true
+systemctl stop d1_d435i.service || true
+systemctl disable d1_follow.service || true
+systemctl disable d1_d435i.service || true
+
+#DEBHELPER#
+
+exit 0

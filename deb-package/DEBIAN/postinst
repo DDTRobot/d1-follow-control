@@ -1,0 +1,18 @@
+#!/bin/bash
+# postinst script for d1-follow-control
+
+set -e
+
+# Install Python dependencies from bundled wheels (no internet required)
+sudo -u robot pip3 install --user --no-index --find-links=/opt/d1-follow-control/wheels /opt/d1-follow-control/wheels/*.whl
+
+# Enable and start service
+systemctl daemon-reload
+systemctl enable d1_d435i.service
+systemctl enable d1_follow.service
+sudo systemctl restart d1_d435i.service
+sudo systemctl restart d1_follow.service
+
+#DEBHELPER#
+
+exit 0

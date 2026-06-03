@@ -1,0 +1,8 @@
+Package: d1-follow-control
+Version: 1.0
+Architecture: all
+Maintainer: wuyunzhou <wuyunzhou@directdrivetech.com>
+Description: D1 Follow Control Package
+ This package provides UWB-based follow control with D435i obstacle avoidance
+ for D1 robot.
+Depends: python3, python3-pip, ros-humble-cv-bridge, python3-numpy, python3-opencv, ros-humble-realsense2-camera
