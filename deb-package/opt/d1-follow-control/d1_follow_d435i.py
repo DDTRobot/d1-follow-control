@@ -3,7 +3,8 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import Header
-from geometry_msgs.msg import Twist, Pose, Point, Quaternion, Vector3, TwistStamped
+from geometry_msgs.msg import Twist, Pose, Point, Quaternion, Vector3
+from ddt_msgs.msg import UserCommand
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
 from rcl_interfaces.srv import GetParameters
 from cv_bridge import CvBridge
@@ -109,13 +110,13 @@ class UWBProcessor:
         self.tx_enabled = False
 
         # 纯比例控制参数
-        self.target_distance = 1.2
+        self.target_distance = 1.8
         self.kp_distance = 1.0
         self.kp_angle = 1.2
 
         # 平滑控制参数
-        self.max_linear_speed = 1.5
-        self.max_angular_speed = 1.5
+        self.max_linear_speed = 3.0
+        self.max_angular_speed = 3.0
 
         # 死区阈值
         self.distance_deadzone = 0.2
@@ -235,7 +236,6 @@ class UWBProcessor:
             while not stop_event.is_set():
                 if ser.in_waiting > 0:
                     bytes_data = ser.read(ser.in_waiting)
-                    # self.node.get_logger().info(f"串口原始数据: {bytes_data.hex(' ')}")
                     if self.tx_enabled:
                         ser.write(TX_MSG)
                     for b in bytes_data:
@@ -282,8 +282,8 @@ class D435iObstacleAvoidance(Node):
 
         # 创建发布者
         self.publisher_ = self.create_publisher(
-            TwistStamped,
-            f'/{self.robot_ns}/command/cmd_twist',
+            UserCommand,
+            f'/{self.robot_ns}/command/user_command',
             qos_profile
         )
 
@@ -308,7 +308,7 @@ class D435iObstacleAvoidance(Node):
         self.fy = None
         self.cx = None
         self.cy = None
-        self.camera_height = 0.5  # 相机离地高度（米），可根据实际情况调整
+        self.camera_height = 0.4  # 相机离地高度（米），可根据实际情况调整
         self.ground_threshold = 0.05  # 地面高度阈值（米）
 
         # 初始化use_sdk参数
@@ -321,7 +321,7 @@ class D435iObstacleAvoidance(Node):
         self.bridge = CvBridge()
 
         # 避障参数
-        self.safe_distance = 0.8
+        self.safe_distance = 1.6
 
         # 检测区域
         self.center_region = 0.4
@@ -357,7 +357,7 @@ class D435iObstacleAvoidance(Node):
         # 转向后前进状态控制
         self.turning_forward_active = False      # 是否处于转向后前进阶段
         self.turning_forward_start_time = 0.0    # 开始前进的时间戳（秒）
-        self.turning_forward_duration = 1.2      # 前进持续时间（秒）
+        self.turning_forward_duration = 0.8      # 前进持续时间（秒）
         self.turning_forward_speed = 1.0        # 前进速度（m/s）
         self._following_side_avoid_active = False  # 跟随模式中侧方避障是否激活
 
@@ -679,11 +679,16 @@ class D435iObstacleAvoidance(Node):
         # 计算角度误差的绝对值
         angle_error_abs = abs(uwb_angle_deg)
 
-        # 创建TwistStamped消息
-        twist_stamped_msg = TwistStamped()
-        twist_stamped_msg.header = Header()
-        twist_stamped_msg.header.stamp = self.get_clock().now().to_msg()
-        twist_stamped_msg.header.frame_id = 'base_link'
+        # 创建UserCommand消息
+        user_cmd_msg = UserCommand()
+        user_cmd_msg.header = Header()
+        user_cmd_msg.header.stamp = self.get_clock().now().to_msg()
+        user_cmd_msg.header.frame_id = 'base_link'
+        # fsm_mode 留空表示保持底盘当前模式，只更新速度；如底盘不动可改为 'car'
+        user_cmd_msg.fsm_mode = ''
+        # pose 默认（跟随只控速度）：位置全0，姿态单位四元数
+        user_cmd_msg.pose = Pose()
+        user_cmd_msg.pose.orientation.w = 1.0
 
         # --------------------------------------------------------------
         # 转向后前进状态处理（优先级最高）
@@ -704,10 +709,11 @@ class D435iObstacleAvoidance(Node):
                     self.smooth_linear_x = self.smooth_alpha * linear_x + (1 - self.smooth_alpha) * self.smooth_linear_x
                     self.smooth_angular_z = self.smooth_alpha * angular_z + (1 - self.smooth_alpha) * self.smooth_angular_z
 
-                    twist_stamped_msg.twist.linear = Vector3(x=float(self.smooth_linear_x), y=0.0, z=0.0)
-                    twist_stamped_msg.twist.angular = Vector3(x=0.0, y=0.0, z=float(self.smooth_angular_z))
+                    user_cmd_msg.header.stamp = self.get_clock().now().to_msg()
+                    user_cmd_msg.twist.linear = Vector3(x=float(self.smooth_linear_x), y=0.0, z=0.0)
+                    user_cmd_msg.twist.angular = Vector3(x=0.0, y=0.0, z=float(self.smooth_angular_z))
                     if self.use_sdk:
-                        self.publisher_.publish(twist_stamped_msg)
+                        self.publisher_.publish(user_cmd_msg)
 
                     self.log_counter += 1
                     if self.log_counter % 5 == 0:
@@ -782,14 +788,15 @@ class D435iObstacleAvoidance(Node):
         self.smooth_linear_x = self.smooth_alpha * linear_x + (1 - self.smooth_alpha) * self.smooth_linear_x
         self.smooth_angular_z = self.smooth_alpha * angular_z + (1 - self.smooth_alpha) * self.smooth_angular_z
 
-        twist_stamped_msg.twist.linear = Vector3(x=float(self.smooth_linear_x), y=0.0, z=0.0)
-        twist_stamped_msg.twist.angular = Vector3(x=0.0, y=0.0, z=float(self.smooth_angular_z))
+        user_cmd_msg.header.stamp = self.get_clock().now().to_msg()
+        user_cmd_msg.twist.linear = Vector3(x=float(self.smooth_linear_x), y=0.0, z=0.0)
+        user_cmd_msg.twist.angular = Vector3(x=0.0, y=0.0, z=float(self.smooth_angular_z))
 
         if not self.use_sdk:
             if self.log_counter % 1000 == 0:
                 self.get_logger().info('模拟模式: 控制命令计算中但不发布，use_sdk=False')
         else:
-            self.publisher_.publish(twist_stamped_msg)
+            self.publisher_.publish(user_cmd_msg)
 
         self.log_counter += 1
         if self.log_counter % 5 == 0:
