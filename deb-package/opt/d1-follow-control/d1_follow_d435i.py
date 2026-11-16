@@ -109,17 +109,17 @@ class UWBProcessor:
         self.last_update_time = time.time()
         self.tx_enabled = False
 
-        # 纯比例控制参数
-        self.target_distance = 1.8
-        self.kp_distance = 1.0
+        # 纯比例控制参数（窄空间调参：目标距离 1.2m，须明显大于 safe_distance）
+        self.target_distance = 1.2
+        self.kp_distance = 0.8
         self.kp_angle = 1.2
 
-        # 平滑控制参数
-        self.max_linear_speed = 3.0
-        self.max_angular_speed = 3.0
+        # 平滑控制参数（窄空间降速，留出急停余量）
+        self.max_linear_speed = 1.2
+        self.max_angular_speed = 1.2
 
         # 死区阈值
-        self.distance_deadzone = 0.2
+        self.distance_deadzone = 0.12
         self.angle_deadzone = math.radians(10.0)
 
         # 非线性增益参数
@@ -320,8 +320,8 @@ class D435iObstacleAvoidance(Node):
         # 初始化CV Bridge
         self.bridge = CvBridge()
 
-        # 避障参数
-        self.safe_distance = 1.6
+        # 避障参数（窄空间：调小安全距离，避免走廊两侧长期判定为障碍）
+        self.safe_distance = 0.8
 
         # 检测区域
         self.center_region = 0.4
@@ -349,16 +349,16 @@ class D435iObstacleAvoidance(Node):
         self.current_action = "待机"
         self._last_avoid_was_turn = False  # 上一帧避障是否为纯旋转
 
-        # 速度平滑（EMA），alpha 越大跟手越快、越小越平滑
+        # 速度平滑（EMA），alpha 越大跟手越快、越小越平滑（窄空间取小值抑制抖动）
         self.smooth_linear_x = 0.0
         self.smooth_angular_z = 0.0
-        self.smooth_alpha = 0.6
+        self.smooth_alpha = 0.4
 
-        # 转向后前进状态控制
+        # 转向后前进状态控制（窄空间缩短盲进时长并降速）
         self.turning_forward_active = False      # 是否处于转向后前进阶段
         self.turning_forward_start_time = 0.0    # 开始前进的时间戳（秒）
-        self.turning_forward_duration = 0.8      # 前进持续时间（秒）
-        self.turning_forward_speed = 1.0        # 前进速度（m/s）
+        self.turning_forward_duration = 0.4      # 前进持续时间（秒）
+        self.turning_forward_speed = 0.5        # 前进速度（m/s）
         self._following_side_avoid_active = False  # 跟随模式中侧方避障是否激活
 
         # 日志控制
